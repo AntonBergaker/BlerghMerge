@@ -136,6 +136,7 @@ namespace BlerghMerge
 
             for (int i=0;i<content.Count;i++)
             {
+                string ogLine = content[i];
                 string line = content[i].Trim().ToLower();
                 if (line == "<!--blergh!-->" || line == "<!-- blergh! -->"
                  || line == "<!--blergh-->" || line == "<!-- blergh -->")
@@ -149,6 +150,14 @@ namespace BlerghMerge
                     content.RemoveAt(i);
                     //i is now after the remove lines
 
+                    //Check for indentation
+                    char firstChar = ogLine.First();
+                    int indentation = 0;
+                    if (firstChar == '\t' || firstChar == ' ')
+                    {
+                        indentation = CountRepeatChars(ogLine);
+                    }
+
                     // If it's a css file
                     if (line.Contains("link rel=\"stylesheet\""))
                     {
@@ -158,10 +167,11 @@ namespace BlerghMerge
                         string path = newNode.Attributes["href"].Value;
                         path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(filePath), path));
                         string[] lines = File.ReadAllLines(path);
-                        content.Insert(i++, "<style>");
+                        IndentStrings(lines, indentation+1, firstChar);
+                        content.Insert(i++, new string(firstChar, indentation) + "<style>");
                         content.InsertRange(i, lines);
                         i += lines.Length;
-                        content.Insert(i, "</style>");
+                        content.Insert(i, new string(firstChar, indentation) + "</style>");
                     }
                     // A script file
                     else if (line.Contains("<script"))
@@ -172,10 +182,11 @@ namespace BlerghMerge
                         string path = newNode.Attributes["src"].Value;
                         path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(filePath), path));
                         string[] lines = File.ReadAllLines(path);
-                        content.Insert(i++, "<script>");
+                        IndentStrings(lines, indentation+1, firstChar);
+                        content.Insert(i++, new string(firstChar, indentation) + "<script>");
                         content.InsertRange(i, lines);
                         i += lines.Length;
-                        content.Insert(i, "</script>");
+                        content.Insert(i, new string(firstChar, indentation) + "</script>");
                     }
                     // Or a html file
                     else if (line.Contains("class = \"imported") || line.Contains("class=\"imported"))
@@ -185,21 +196,14 @@ namespace BlerghMerge
                         XmlNode newNode = doc.DocumentElement;
                         string path = newNode.InnerText;
                         path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(filePath), path));
-                        content.InsertRange(i, File.ReadAllLines(path));
+                        string[] lines = File.ReadAllLines(path);
+                        IndentStrings(lines, indentation, firstChar);
+                        content.InsertRange(i, lines);
                     }
                 }
             }
 
             File.WriteAllLines(filePath, content);
-        }
-
-        private static void IndentStrings(string[] strings, int indention, char indentChar = '\t')
-        {
-            int len = strings.Length;
-            for (int i = 0; i<len; i++)
-            {
-                strings[i] = new string(indentChar, indention) + strings[i];
-            }
         }
 
         /// <summary>
@@ -241,6 +245,33 @@ namespace BlerghMerge
                     string temppath = Path.Combine(destDirName, subdir.Name);
                     DirectoryCopy(subdir.FullName, temppath, copySubDirs);
                 }
+            }
+        }
+
+        private static int CountRepeatChars(string str)
+        {
+            if (str.Length == 0)
+            {
+                return 0;
+            }
+            char firstChar = str.First();
+            int count = 1;
+            for (; count<str.Length; count++)
+            {
+                if (str[count] != firstChar)
+                {
+                    break;
+                }
+            }
+            return count;
+        }
+
+        private static void IndentStrings(string[] strings, int indention, char indentChar)
+        {
+            int len = strings.Length;
+            for (int i = 0; i < len; i++)
+            {
+                strings[i] = new string(indentChar, indention) + strings[i];
             }
         }
     }
