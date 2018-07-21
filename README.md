@@ -30,6 +30,7 @@ This will put the linked JavaScript inside ```script``` tags.
 
 ### HTML
 HTML is a bit more complex, and it's identified by the class ```imported```
+```
 <!-- BLERGH -->
 <div class="imported">..\header.html</div>
 ```
