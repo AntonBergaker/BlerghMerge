@@ -136,74 +136,95 @@ namespace BlerghMerge
 
             for (int i=0;i<content.Count;i++)
             {
-                string ogLine = content[i];
                 string line = content[i].Trim().ToLower();
                 if (line == "<!--blergh!-->" || line == "<!-- blergh! -->"
                  || line == "<!--blergh-->" || line == "<!-- blergh -->")
                 {
                     //Remove the blergh line
                     content.RemoveAt(i);
-                    //The next line is now i
-
+                    
                     line = content[i];
-
-                    content.RemoveAt(i);
-                    //i is now after the remove lines
-
-                    //Check for indentation
-                    char firstChar = ogLine.First();
-                    int indentation = 0;
-                    if (firstChar == '\t' || firstChar == ' ')
-                    {
-                        indentation = CountRepeatChars(ogLine);
-                    }
 
                     // If it's a css file
                     if (line.Contains("link rel=\"stylesheet\""))
                     {
-                        XmlDocument doc = new XmlDocument();
-                        doc.LoadXml(line);
-                        XmlNode newNode = doc.DocumentElement;
-                        string path = newNode.Attributes["href"].Value;
-                        path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(filePath), path));
-                        string[] lines = File.ReadAllLines(path);
-                        IndentStrings(lines, indentation+1, firstChar);
-                        content.Insert(i++, new string(firstChar, indentation) + "<style>");
-                        content.InsertRange(i, lines);
-                        i += lines.Length;
-                        content.Insert(i, new string(firstChar, indentation) + "</style>");
+                        InsertCSS(content, i, filePath);
                     }
                     // A script file
                     else if (line.Contains("<script"))
                     {
-                        XmlDocument doc = new XmlDocument();
-                        doc.LoadXml(line);
-                        XmlNode newNode = doc.DocumentElement;
-                        string path = newNode.Attributes["src"].Value;
-                        path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(filePath), path));
-                        string[] lines = File.ReadAllLines(path);
-                        IndentStrings(lines, indentation+1, firstChar);
-                        content.Insert(i++, new string(firstChar, indentation) + "<script>");
-                        content.InsertRange(i, lines);
-                        i += lines.Length;
-                        content.Insert(i, new string(firstChar, indentation) + "</script>");
+                        InsertJavaScript(content, i, filePath);
                     }
                     // Or a html file
                     else if (line.Contains("class = \"imported") || line.Contains("class=\"imported"))
                     {
-                        XmlDocument doc = new XmlDocument();
-                        doc.LoadXml(line);
-                        XmlNode newNode = doc.DocumentElement;
-                        string path = newNode.InnerText;
-                        path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(filePath), path));
-                        string[] lines = File.ReadAllLines(path);
-                        IndentStrings(lines, indentation, firstChar);
-                        content.InsertRange(i, lines);
+                        InsertHtml(content, i, filePath);
                     }
+
+                    //Remove the line itself
+                    content.RemoveAt(i-1);
                 }
             }
 
             File.WriteAllLines(filePath, content);
+        }
+
+        private static void InsertCSS(List<string> content, int position, string filePath)
+        {
+            string line = content[position];
+            char indentationChar;
+            int indentation = GetIndention(line, out indentationChar);
+
+            XmlNode newNode = ReadXmlNode(line);
+            string path = newNode.Attributes["href"].Value;
+            path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(filePath), path));
+
+            string[] lines = File.ReadAllLines(path);
+            IndentStrings(lines, indentation + 1, indentationChar);
+
+            content.Insert(position++, new string(indentationChar, indentation) + "<style>");
+            content.InsertRange(position, lines);
+            content.Insert(position + lines.Length, new string(indentationChar, indentation) + "</style>");
+        }
+
+        private static void InsertJavaScript(List<string> content, int position, string filePath)
+        {
+            string line = content[position];
+            char indentationChar;
+            int indentation = GetIndention(line, out indentationChar);
+
+            XmlNode newNode = ReadXmlNode(line);
+            string path = newNode.Attributes["src"].Value;
+            path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(filePath), path));
+
+            string[] lines = File.ReadAllLines(path);
+            IndentStrings(lines, indentation + 1, indentationChar);
+
+            content.Insert(position++, new string(indentationChar, indentation) + "<script>");
+            content.InsertRange(position, lines);
+            content.Insert(position + lines.Length, new string(indentationChar, indentation) + "</script>");
+        }
+
+        private static void InsertHtml(List<string> content, int position, string filePath)
+        {
+            string line = content[position];
+            char indentationChar;
+            int indentation = GetIndention(line, out indentationChar);
+
+            XmlNode newNode = ReadXmlNode(line);
+            string path = newNode.InnerText;
+            path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(filePath), path));
+
+            string[] lines = File.ReadAllLines(path);
+            IndentStrings(lines, indentation, indentationChar);
+            content.InsertRange(position, lines);
+        }
+
+        private static XmlNode ReadXmlNode(string line)
+        {
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml(line);
+            return doc.DocumentElement;
         }
 
         /// <summary>
@@ -246,6 +267,24 @@ namespace BlerghMerge
                     DirectoryCopy(subdir.FullName, temppath, copySubDirs);
                 }
             }
+        }
+
+        private static int GetIndention(string input, out char indentationChar)
+        {
+            if (input.Length == 0)
+            {
+                indentationChar = '\t';
+                return 0;
+            }
+
+            indentationChar = input.First();
+            int indentation = 0;
+            if (indentationChar == '\t' || indentationChar == ' ')
+            {
+                indentation = CountRepeatChars(input);
+            }
+
+            return indentation;
         }
 
         private static int CountRepeatChars(string str)
