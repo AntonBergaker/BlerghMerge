@@ -66,7 +66,7 @@ namespace BlerghMerge
                 string ext = file.Extension.Substring(1);
                 if (possibleFiles.Contains(ext))
                 {
-                    PreProcessFile(file.FullName);
+                    PreProcessFile(file.FullName, ext);
                 }
             }
 
@@ -77,18 +77,20 @@ namespace BlerghMerge
             }
         }
 
-        private static void PreProcessFile(string filePath)
+        private static void PreProcessFile(string filePath, string filetype)
         {
             List<string> content = File.ReadAllLines(filePath).ToList();
             bool insideIgnore = false;
             int ignoreStart = -1;
+
+            string commentIdentifier = filetype == "html" || filetype == "htm" ? "<!--" : "//";
 
             for (int i=0;i<content.Count;i++)
             {
                 string line = content[i].ToLower();
                 if (!insideIgnore)
                 {
-                    if (line.Contains("//") && !line.Contains("end")
+                    if (line.Contains(commentIdentifier) && !line.Contains("end")
                     && (line.Contains("blergh ignore") || line.Contains("blergh! ignore")))
                     {
                         insideIgnore = true;
@@ -96,7 +98,7 @@ namespace BlerghMerge
                     }
                 } else
                 {
-                    if (line.Contains("//") && line.Contains("end")
+                    if (line.Contains(commentIdentifier) && line.Contains("end")
                     && (line.Contains("blergh ignore") || line.Contains("blergh! ignore")))
                     {
                         insideIgnore = false;
