@@ -20,10 +20,10 @@ All BLERGH is called upon using the `BLERGH` or `BLERGH!` header
 This will replace the link to the style sheet with the actual style sheet inside ```style``` tags
 
 ### JavaScript
-JavaScript works in a very similar way.
+JavaScript works in a way that's very similar to the css.
 ```
 <!-- BLERGH -->
-<link rel="stylesheet" href="../css/main.css" type="text/css"/>
+<script src="../js/main.js"></script>
 ```
 This will put the linked JavaScript inside ```script``` tags.
 
@@ -34,7 +34,8 @@ HTML is a bit more complex, and it's identified by the class ```imported```
 <!-- BLERGH -->
 <div class="imported">..\header.html</div>
 ```
-BlerghMerge will replace the entire element with the linked HTML. Because HTML can not be called directly it's recommended to put this into your JavaScript.
+BlerghMerge will replace the entire element with the linked HTML.  
+Since HTML can not be loaded directly it's recommended to put the following into your JavaScript:
 ```
 // BLERGH IGNORE
 var importedItems = document.getElementsByClassName("imported");
