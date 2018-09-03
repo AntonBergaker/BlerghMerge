@@ -164,7 +164,7 @@ namespace BlerghMerge
                     }
 
                     //Remove the line itself
-                    content.RemoveAt(i-1);
+                    content.RemoveAt(i);
                 }
             }
 
@@ -183,7 +183,7 @@ namespace BlerghMerge
 
             string[] lines = File.ReadAllLines(path);
             IndentStrings(lines, indentation + 1, indentationChar);
-
+            position += 1;
             content.Insert(position++, new string(indentationChar, indentation) + "<style>");
             content.InsertRange(position, lines);
             content.Insert(position + lines.Length, new string(indentationChar, indentation) + "</style>");
@@ -201,7 +201,7 @@ namespace BlerghMerge
 
             string[] lines = File.ReadAllLines(path);
             IndentStrings(lines, indentation + 1, indentationChar);
-
+            position += 1;
             content.Insert(position++, new string(indentationChar, indentation) + "<script>");
             content.InsertRange(position, lines);
             content.Insert(position + lines.Length, new string(indentationChar, indentation) + "</script>");
@@ -216,7 +216,7 @@ namespace BlerghMerge
             XmlNode newNode = ReadXmlNode(line);
             string path = newNode.InnerText;
             path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(filePath), path));
-
+            position += 1;
             string[] lines = File.ReadAllLines(path);
             IndentStrings(lines, indentation, indentationChar);
             content.InsertRange(position, lines);
