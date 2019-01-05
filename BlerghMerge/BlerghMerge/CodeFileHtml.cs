@@ -23,5 +23,14 @@ namespace BlerghMerge {
 
             return sb.ToString();
         }
+
+        public override List<string> ExportLines() {
+            // Overridden because this doesn't indent like others do
+            string[] lines = File.ReadAllLines(path);
+            Indent(lines, indentation, indentationChar);
+
+            return new List<string>(lines);
+
+        }
     }
 }

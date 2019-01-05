@@ -19,7 +19,7 @@ namespace BlerghMerge {
             StringBuilder sb = new StringBuilder();
             sb.Append(new string(indentationChar, indentation) + "<script>\n");
             foreach(string s in content) {
-                sb.Append(s);
+                sb.Append(s + "\n");
             }
             sb.Append(new string(indentationChar, indentation) + "</script>");
 

@@ -11,7 +11,7 @@ namespace BlerghMerge {
 
         public CodeFileCSS(string source, string sourcePath) : base(source, sourcePath) {
             XmlNode newNode = ReadXmlNode(source);
-            path = newNode.Attributes["src"].Value;
+            path = newNode.Attributes["href"].Value;
             path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(sourcePath), path));
         }
 
@@ -19,7 +19,7 @@ namespace BlerghMerge {
             StringBuilder sb = new StringBuilder();
             sb.Append(new string(indentationChar, indentation) + "<style>\n");
             foreach(string s in content) {
-                sb.Append(s);
+                sb.Append(s + "\n");
             }
             sb.Append(new string(indentationChar, indentation) + "</style>");
 

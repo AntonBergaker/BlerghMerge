@@ -121,6 +121,7 @@ namespace BlerghMerge {
                     content.RemoveAt(i);
 
                     List<CodeFile> files = new List<CodeFile>();
+                    CodeFile previous = null;
 
                     // Scan until it finds something that can't be imported
                     for (; i < content.Count; i++) {
@@ -145,9 +146,23 @@ namespace BlerghMerge {
                             break;
                         }
 
+                        content.RemoveAt(i--);
                         files.Add(file);
-
                     }
+
+                    if (files.Count == 0) {
+                        continue;
+                    }
+
+                    List<string> insert = new List<string>();
+
+                    foreach (CodeFile f in files) {
+                        insert.AddRange(f.ExportLines());
+                    }
+
+                    //Replace the line with the new content
+                    
+                    content.Insert(i, files[0].WrapContent(insert));
                 }
             }
 
