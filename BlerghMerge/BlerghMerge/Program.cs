@@ -6,27 +6,21 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Xml;
 
-namespace BlerghMerge
-{
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            if (args.Length != 1 && args.Length != 2)
-            {
-                Console.WriteLine("Usage: BlerghMerge.exe [SOURCE DIRECTORY] [OPTIONAL TARGET DIRECTORY]");
+namespace BlerghMerge {
+    class Program {
+        static void Main(string[] args) {
+            if (args.Length != 1 && args.Length != 2) {
+                Console.WriteLine("Usage: BlerghMerge [SOURCE DIRECTORY] [OPTIONAL TARGET DIRECTORY]");
                 return;
             }
 
             // Get and clean up the paths
             string sourcePath = args[0];
-            if (sourcePath.Last() != '\\')
-            {
-                sourcePath = sourcePath+'\\';
+            if (sourcePath.Last() != '\\') {
+                sourcePath = sourcePath + '\\';
             }
 
-            if (!Directory.Exists(sourcePath))
-            {
+            if (!Directory.Exists(sourcePath)) {
                 Console.WriteLine("Directory {0} not found!", sourcePath);
                 return;
             }
@@ -34,12 +28,10 @@ namespace BlerghMerge
             string targetPath = args.Length == 2 ?
                 args[1] :
                 Path.GetFullPath(Path.Combine(sourcePath, "..\\", "blergh output\\"));
-            
+
             // Delete the previous directory if it already exists
-            if (Directory.Exists(targetPath))
-            {
-                try
-                {
+            if (Directory.Exists(targetPath)) {
+                try {
                     Directory.Delete(targetPath, true);
                 } catch { }
             }
@@ -55,54 +47,44 @@ namespace BlerghMerge
         }
 
 
-        private static void PreProcessFiles(string directoryPath)
-        {
+        private static void PreProcessFiles(string directoryPath) {
             DirectoryInfo dir = new DirectoryInfo(directoryPath);
 
             // Get the files in the directory and run the update on them
-            foreach (FileInfo file in dir.GetFiles())
-            {
-                string[] possibleFiles = new string[] { "html", "htm", "js", "css", "txt", "json"};
+            foreach (FileInfo file in dir.GetFiles()) {
+                string[] possibleFiles = new string[] { "html", "htm", "js", "css", "txt", "json" };
                 string ext = file.Extension.Substring(1);
-                if (possibleFiles.Contains(ext))
-                {
+                if (possibleFiles.Contains(ext)) {
                     PreProcessFile(file.FullName, ext);
                 }
             }
 
             // Recursively call the folders
-            foreach (DirectoryInfo subdir in dir.GetDirectories())
-            {
+            foreach (DirectoryInfo subdir in dir.GetDirectories()) {
                 PreProcessFiles(subdir.FullName);
             }
         }
 
-        private static void PreProcessFile(string filePath, string filetype)
-        {
+        private static void PreProcessFile(string filePath, string filetype) {
             List<string> content = File.ReadAllLines(filePath).ToList();
             bool insideIgnore = false;
             int ignoreStart = -1;
 
             string commentIdentifier = filetype == "html" || filetype == "htm" ? "<!--" : "//";
 
-            for (int i=0;i<content.Count;i++)
-            {
+            for (int i = 0; i < content.Count; i++) {
                 string line = content[i].ToLower();
-                if (!insideIgnore)
-                {
+                if (!insideIgnore) {
                     if (line.Contains(commentIdentifier) && !line.Contains("end")
-                    && (line.Contains("blergh ignore") || line.Contains("blergh! ignore")))
-                    {
+                    && (line.Contains("blergh ignore") || line.Contains("blergh! ignore"))) {
                         insideIgnore = true;
                         ignoreStart = i;
                     }
-                } else
-                {
+                } else {
                     if (line.Contains(commentIdentifier) && line.Contains("end")
-                    && (line.Contains("blergh ignore") || line.Contains("blergh! ignore")))
-                    {
+                    && (line.Contains("blergh ignore") || line.Contains("blergh! ignore"))) {
                         insideIgnore = false;
-                        content.RemoveRange(ignoreStart, i-ignoreStart+1);
+                        content.RemoveRange(ignoreStart, i - ignoreStart + 1);
                         i = ignoreStart;
                     }
                 }
@@ -111,135 +93,92 @@ namespace BlerghMerge
             File.WriteAllLines(filePath, content);
         }
 
-        private static void UpdateFiles(string directoryPath)
-        {
+        private static void UpdateFiles(string directoryPath) {
             DirectoryInfo dir = new DirectoryInfo(directoryPath);
 
             // Get the files in the directory and run the update on them
-            foreach (FileInfo file in dir.GetFiles())
-            {
+            foreach (FileInfo file in dir.GetFiles()) {
                 string ext = file.Extension;
-                if (ext == ".html" || ext == ".htm")
-                {
+                if (ext == ".html" || ext == ".htm") {
                     UpdateFile(file.FullName);
                 }
             }
 
             // Recursively call the folders
-            foreach (DirectoryInfo subdir in dir.GetDirectories())
-            {
+            foreach (DirectoryInfo subdir in dir.GetDirectories()) {
                 UpdateFiles(subdir.FullName);
             }
         }
- 
-        private static void UpdateFile(string filePath)
-        {
+
+        private static void UpdateFile(string filePath) {
             List<string> content = File.ReadAllLines(filePath).ToList();
 
-            for (int i=0;i<content.Count;i++)
-            {
+            for (int i = 0; i < content.Count; i++) {
                 string line = content[i].Trim().ToLower();
                 if (line == "<!--blergh!-->" || line == "<!-- blergh! -->"
-                 || line == "<!--blergh-->" || line == "<!-- blergh -->")
-                {
+                 || line == "<!--blergh-->" || line == "<!-- blergh -->") {
                     //Remove the blergh line
                     content.RemoveAt(i);
+
+                    List<CodeFile> files = new List<CodeFile>();
+                    CodeFile previous = null;
+
+                    // Scan until it finds something that can't be imported
+                    for (; i < content.Count; i++) {
+                        line = content[i];
+
+                        CodeFile file = null;
+
+                        // If it's a css file
+                        if (line.Contains("link rel=\"stylesheet\"")) {
+                            file = new CodeFileCSS(line, filePath);
+                        }
+                        // A script file
+                        else if (line.Contains("<script")) {
+                            file = new CodeFileJavaScript(line, filePath);
+                        }
+                        // Or a html file
+                        else if (line.Contains("class = \"imported") || line.Contains("class=\"imported")) {
+                            file = new CodeFileHtml(line, filePath);
+                        }
+
+                        if (file == null) {
+                            break;
+                        }
+
+                        content.RemoveAt(i--);
+                        files.Add(file);
+                    }
+
+                    if (files.Count == 0) {
+                        continue;
+                    }
+
+                    List<string> insert = new List<string>();
+
+                    foreach (CodeFile f in files) {
+                        insert.AddRange(f.ExportLines());
+                    }
+
+                    //Replace the line with the new content
                     
-                    line = content[i];
-
-                    // If it's a css file
-                    if (line.Contains("link rel=\"stylesheet\""))
-                    {
-                        InsertCSS(content, i, filePath);
-                    }
-                    // A script file
-                    else if (line.Contains("<script"))
-                    {
-                        InsertJavaScript(content, i, filePath);
-                    }
-                    // Or a html file
-                    else if (line.Contains("class = \"imported") || line.Contains("class=\"imported"))
-                    {
-                        InsertHtml(content, i, filePath);
-                    }
-
-                    //Remove the line itself
-                    content.RemoveAt(i);
+                    content.Insert(i, files[0].WrapContent(insert));
                 }
             }
 
             File.WriteAllLines(filePath, content);
         }
 
-        private static void InsertCSS(List<string> content, int position, string filePath)
-        {
-            string line = content[position];
-            char indentationChar;
-            int indentation = GetIndention(line, out indentationChar);
-
-            XmlNode newNode = ReadXmlNode(line);
-            string path = newNode.Attributes["href"].Value;
-            path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(filePath), path));
-
-            string[] lines = File.ReadAllLines(path);
-            IndentStrings(lines, indentation + 1, indentationChar);
-            position += 1;
-            content.Insert(position++, new string(indentationChar, indentation) + "<style>");
-            content.InsertRange(position, lines);
-            content.Insert(position + lines.Length, new string(indentationChar, indentation) + "</style>");
-        }
-
-        private static void InsertJavaScript(List<string> content, int position, string filePath)
-        {
-            string line = content[position];
-            char indentationChar;
-            int indentation = GetIndention(line, out indentationChar);
-
-            XmlNode newNode = ReadXmlNode(line);
-            string path = newNode.Attributes["src"].Value;
-            path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(filePath), path));
-
-            string[] lines = File.ReadAllLines(path);
-            IndentStrings(lines, indentation + 1, indentationChar);
-            position += 1;
-            content.Insert(position++, new string(indentationChar, indentation) + "<script>");
-            content.InsertRange(position, lines);
-            content.Insert(position + lines.Length, new string(indentationChar, indentation) + "</script>");
-        }
-
-        private static void InsertHtml(List<string> content, int position, string filePath)
-        {
-            string line = content[position];
-            char indentationChar;
-            int indentation = GetIndention(line, out indentationChar);
-
-            XmlNode newNode = ReadXmlNode(line);
-            string path = newNode.InnerText;
-            path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(filePath), path));
-            position += 1;
-            string[] lines = File.ReadAllLines(path);
-            IndentStrings(lines, indentation, indentationChar);
-            content.InsertRange(position, lines);
-        }
-
-        private static XmlNode ReadXmlNode(string line)
-        {
-            XmlDocument doc = new XmlDocument();
-            doc.LoadXml(line);
-            return doc.DocumentElement;
-        }
 
         /// <summary>
         /// Copies a directory from one location to another
         /// </summary>
-        private static void DirectoryCopy(string sourceDirName, string destDirName, bool copySubDirs)
-        {
+        private static void DirectoryCopy(string sourceDirName, string destDirName, bool copySubDirs) {
             // Taken from https://docs.microsoft.com/en-us/dotnet/standard/io/how-to-copy-directories
             // Get the subdirectories for the specified directory.
             DirectoryInfo dir = new DirectoryInfo(sourceDirName);
 
-            if (!dir.Exists)
-            {
+            if (!dir.Exists) {
                 throw new DirectoryNotFoundException(
                     "Source directory does not exist or could not be found: "
                     + sourceDirName);
@@ -247,72 +186,23 @@ namespace BlerghMerge
 
             DirectoryInfo[] dirs = dir.GetDirectories();
             // If the destination directory doesn't exist, create it.
-            if (!Directory.Exists(destDirName))
-            {
+            if (!Directory.Exists(destDirName)) {
                 Directory.CreateDirectory(destDirName);
             }
 
             // Get the files in the directory and copy them to the new location.
             FileInfo[] files = dir.GetFiles();
-            foreach (FileInfo file in files)
-            {
+            foreach (FileInfo file in files) {
                 string temppath = Path.Combine(destDirName, file.Name);
                 file.CopyTo(temppath, false);
             }
 
             // If copying subdirectories, copy them and their contents to new location.
-            if (copySubDirs)
-            {
-                foreach (DirectoryInfo subdir in dirs)
-                {
+            if (copySubDirs) {
+                foreach (DirectoryInfo subdir in dirs) {
                     string temppath = Path.Combine(destDirName, subdir.Name);
                     DirectoryCopy(subdir.FullName, temppath, copySubDirs);
                 }
-            }
-        }
-
-        private static int GetIndention(string input, out char indentationChar)
-        {
-            if (input.Length == 0)
-            {
-                indentationChar = '\t';
-                return 0;
-            }
-
-            indentationChar = input.First();
-            int indentation = 0;
-            if (indentationChar == '\t' || indentationChar == ' ')
-            {
-                indentation = CountRepeatChars(input);
-            }
-
-            return indentation;
-        }
-
-        private static int CountRepeatChars(string str)
-        {
-            if (str.Length == 0)
-            {
-                return 0;
-            }
-            char firstChar = str.First();
-            int count = 1;
-            for (; count<str.Length; count++)
-            {
-                if (str[count] != firstChar)
-                {
-                    break;
-                }
-            }
-            return count;
-        }
-
-        private static void IndentStrings(string[] strings, int indention, char indentChar)
-        {
-            int len = strings.Length;
-            for (int i = 0; i < len; i++)
-            {
-                strings[i] = new string(indentChar, indention) + strings[i];
             }
         }
     }
